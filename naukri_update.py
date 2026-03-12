@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 import time
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -26,6 +27,8 @@ def get_driver(headless: bool = False) -> webdriver.Chrome:
         options.add_argument("--window-size=1920,1080")
     else:
         options.add_argument("--start-maximized")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
 
     # Use explicit Chrome binary if provided (e.g. from browser-actions/setup-chrome on CI)
     chrome_bin = os.environ.get("CHROME_BIN")
@@ -121,8 +124,12 @@ def main() -> None:
         print("[+] Done — profile has been refreshed.")
     except Exception as exc:
         print(f"[!] Error: {exc}")
-        driver.save_screenshot("naukri_error.png")
-        print("[!] Screenshot saved to naukri_error.png for debugging.")
+        try:
+            driver.save_screenshot("naukri_error.png")
+            print("[!] Screenshot saved to naukri_error.png for debugging.")
+        except Exception:
+            pass
+        sys.exit(1)
     finally:
         driver.quit()
 
