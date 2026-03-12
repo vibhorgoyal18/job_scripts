@@ -1,10 +1,12 @@
 import argparse
 import time
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
 NAUKRI_LOGIN_URL   = "https://www.naukri.com/nlogin/login"
 PROFILE_URL        = "https://www.naukri.com/mnjuser/profile"
@@ -21,10 +23,10 @@ def get_driver(headless: bool = False) -> webdriver.Chrome:
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
-        options.add_argument("--remote-debugging-port=9222")
     else:
         options.add_argument("--start-maximized")
-    return webdriver.Chrome(options=options)
+    service = Service(ChromeDriverManager().install())
+    return webdriver.Chrome(service=service, options=options)
 
 
 def login(driver: webdriver.Chrome, wait: WebDriverWait, email: str, password: str) -> None:
