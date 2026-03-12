@@ -75,15 +75,21 @@ def run(email: str, password: str, headless: bool = True) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Refresh Naukri profile summary.")
-    parser.add_argument("--email",    required=True, help="Naukri account email")
-    parser.add_argument("--password", required=True, help="Naukri account password")
+    parser.add_argument("--email",    default=None, help="Naukri account email (or set NAUKRI_EMAIL env var)")
+    parser.add_argument("--password", default=None, help="Naukri account password (or set NAUKRI_PASSWORD env var)")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
     return parser.parse_args()
 
 
 def main() -> None:
+    import os
     args = parse_args()
-    run(args.email, args.password, headless=args.headless)
+    email    = args.email    or os.environ.get("NAUKRI_EMAIL")
+    password = args.password or os.environ.get("NAUKRI_PASSWORD")
+    if not email or not password:
+        print("[!] Credentials required: pass --email/--password or set NAUKRI_EMAIL/NAUKRI_PASSWORD env vars.")
+        sys.exit(1)
+    run(email, password, headless=args.headless)
     print("[+] Done — profile has been refreshed.")
 
 

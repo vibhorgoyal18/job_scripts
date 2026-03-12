@@ -4,3 +4,4 @@ __pycache__/
 *.png
 .env
 .playwright-mcp/
+naukri_refresh.log
