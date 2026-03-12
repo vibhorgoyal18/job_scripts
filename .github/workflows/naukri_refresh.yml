@@ -22,8 +22,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Install Chrome
-        uses: browser-actions/setup-chrome@v1
+      - name: Install ChromeDriver (via Selenium Manager)
+        run: python -c "from selenium import webdriver; from selenium.webdriver.chrome.options import Options; o=Options(); o.add_argument('--headless=new'); o.add_argument('--no-sandbox'); webdriver.Chrome(options=o).quit()" || true
 
       - name: Run Naukri update script
         run: |

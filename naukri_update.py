@@ -12,7 +12,6 @@ PROFILE_URL        = "https://www.naukri.com/mnjuser/profile"
 
 def get_driver(headless: bool = False) -> webdriver.Chrome:
     options = Options()
-    options.add_argument("--start-maximized")
     options.add_argument("--disable-notifications")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
@@ -21,6 +20,10 @@ def get_driver(headless: bool = False) -> webdriver.Chrome:
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--remote-debugging-port=9222")
+    else:
+        options.add_argument("--start-maximized")
     return webdriver.Chrome(options=options)
 
 
