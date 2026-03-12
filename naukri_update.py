@@ -25,6 +25,9 @@ def get_driver(headless: bool = False) -> webdriver.Chrome:
     options.add_argument("--disable-client-side-phishing-detection")
     options.add_argument("--disable-sync")
     options.add_argument("--disable-default-apps")
+    options.add_argument("--disable-webgl")
+    options.add_argument("--disable-features=VizDisplayCompositor")
+    options.add_argument("--disable-software-rasterizer")
     options.page_load_strategy = "eager"
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
