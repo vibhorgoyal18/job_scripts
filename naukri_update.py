@@ -10,14 +10,17 @@ NAUKRI_LOGIN_URL   = "https://www.naukri.com/nlogin/login"
 PROFILE_URL        = "https://www.naukri.com/mnjuser/profile"
 
 
-def get_driver() -> webdriver.Chrome:
+def get_driver(headless: bool = False) -> webdriver.Chrome:
     options = Options()
     options.add_argument("--start-maximized")
-    # Uncomment the next line to run without a visible browser window
-    # options.add_argument("--headless=new")
     options.add_argument("--disable-notifications")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
+    if headless:
+        options.add_argument("--headless=new")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
     return webdriver.Chrome(options=options)
 
 
@@ -88,12 +91,13 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Refresh Naukri profile summary.")
     parser.add_argument("--email",    required=True, help="Naukri account email")
     parser.add_argument("--password", required=True, help="Naukri account password")
+    parser.add_argument("--headless", action="store_true", help="Run Chrome in headless mode")
     return parser.parse_args()
 
 
 def main() -> None:
     args   = parse_args()
-    driver = get_driver()
+    driver = get_driver(headless=args.headless)
     wait   = WebDriverWait(driver, 20)
 
     try:
