@@ -17,18 +17,22 @@ PROFILE_URL        = "https://www.naukri.com/mnjuser/profile"
 def get_driver(headless: bool = False) -> webdriver.Chrome:
     options = Options()
     options.add_argument("--disable-notifications")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-background-networking")
+    options.add_argument("--disable-client-side-phishing-detection")
+    options.add_argument("--disable-sync")
+    options.add_argument("--disable-default-apps")
+    options.page_load_strategy = "eager"
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
     if headless:
         options.add_argument("--headless=new")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
     else:
         options.add_argument("--start-maximized")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
 
     # Use explicit Chrome binary if provided (e.g. from browser-actions/setup-chrome on CI)
     chrome_bin = os.environ.get("CHROME_BIN")
