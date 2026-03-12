@@ -1,4 +1,5 @@
 import argparse
+import os
 import time
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -25,7 +26,16 @@ def get_driver(headless: bool = False) -> webdriver.Chrome:
         options.add_argument("--window-size=1920,1080")
     else:
         options.add_argument("--start-maximized")
-    service = Service(ChromeDriverManager().install())
+
+    # Use explicit Chrome binary if provided (e.g. from browser-actions/setup-chrome on CI)
+    chrome_bin = os.environ.get("CHROME_BIN")
+    if chrome_bin:
+        options.binary_location = chrome_bin
+
+    # Use explicit ChromeDriver if provided, otherwise let webdriver-manager find it
+    chromedriver_bin = os.environ.get("CHROMEDRIVER_BIN")
+    service = Service(chromedriver_bin) if chromedriver_bin else Service(ChromeDriverManager().install())
+
     return webdriver.Chrome(service=service, options=options)
 
 
