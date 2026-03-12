@@ -22,27 +22,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Install Xvfb
-        run: sudo apt-get install -y xvfb
-
-      - name: Install Chrome
-        id: setup-chrome
-        uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: "120"
-          install-chromedriver: true
+      - name: Install Playwright browsers
+        run: playwright install --with-deps chromium
 
       - name: Run Naukri update script
-        env:
-          DISPLAY: ":99"
-          CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
-          CHROMEDRIVER_BIN: ${{ steps.setup-chrome.outputs.chromedriver-path }}
         run: |
-          Xvfb :99 -screen 0 1920x1080x24 &
-          sleep 2
           python naukri_update.py \
             --email "${{ secrets.NAUKRI_EMAIL }}" \
-            --password "${{ secrets.NAUKRI_PASSWORD }}"
+            --password "${{ secrets.NAUKRI_PASSWORD }}" \
+            --headless
 
       - name: Upload error screenshot
         if: always()

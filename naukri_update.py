@@ -1,138 +1,90 @@
 import argparse
-import os
 import sys
 import time
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
-NAUKRI_LOGIN_URL   = "https://www.naukri.com/nlogin/login"
-PROFILE_URL        = "https://www.naukri.com/mnjuser/profile"
+NAUKRI_LOGIN_URL = "https://www.naukri.com/nlogin/login"
+PROFILE_URL      = "https://www.naukri.com/mnjuser/profile"
 
 
-def get_driver(headless: bool = False) -> webdriver.Chrome:
-    options = Options()
-    options.add_argument("--disable-notifications")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-background-networking")
-    options.add_argument("--disable-webgl")
-    options.add_argument("--memory-pressure-off")
-    options.page_load_strategy = "eager"
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option("useAutomationExtension", False)
-    if headless:
-        options.add_argument("--headless=new")
-        options.add_argument("--window-size=1920,1080")
-    else:
-        options.add_argument("--start-maximized")
-    chrome_bin = os.environ.get("CHROME_BIN")
-    if chrome_bin:
-        options.binary_location = chrome_bin
-    chromedriver_bin = os.environ.get("CHROMEDRIVER_BIN")
-    service = Service(chromedriver_bin) if chromedriver_bin else Service(ChromeDriverManager().install())
-    return webdriver.Chrome(service=service, options=options)
+def run(email: str, password: str, headless: bool = True) -> None:
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=headless,
+            args=["--no-sandbox", "--disable-dev-shm-usage"],
+        )
+        page = browser.new_page(viewport={"width": 1920, "height": 1080})
 
+        try:
+            # Login
+            print("[*] Opening login page …")
+            page.goto(NAUKRI_LOGIN_URL, wait_until="domcontentloaded")
+            page.fill("#usernameField", email)
+            page.fill("#passwordField", password)
+            page.click("button[type='submit']")
+            # Wait until the browser leaves the login page (SPA may do multiple navigations)
+            page.wait_for_function("() => !window.location.href.includes('nlogin')", timeout=30_000)
+            time.sleep(3)
+            print("[+] Logged in successfully.")
 
-def login(driver: webdriver.Chrome, wait: WebDriverWait, email: str, password: str) -> None:
-    print("[*] Opening login page …")
-    driver.get(NAUKRI_LOGIN_URL)
+            # Navigate to profile
+            print("[*] Navigating to profile page …")
+            page.goto(PROFILE_URL, wait_until="domcontentloaded")
+            time.sleep(4)
 
-    wait.until(EC.presence_of_element_located((By.ID, "usernameField"))).send_keys(email)
-    driver.find_element(By.ID, "passwordField").send_keys(password)
-    driver.find_element(By.XPATH, "//button[@type='submit']").click()
+            # Click the sidebar nav link to load the profile summary section
+            page.locator("li", has_text="Profile summary").first.click()
+            time.sleep(2)
 
-    # Wait until the home / dashboard page loads after login
-    wait.until(EC.url_contains("naukri.com"))
-    time.sleep(3)
-    print("[+] Logged in successfully.")
+            # Click the edit icon
+            print("[*] Opening profile summary editor …")
+            page.locator(".profileSummary .widgetHead .edit").click()
+            time.sleep(2)
 
+            # Wait for the drawer to open — profile summary drawer has the `profileSummaryEdit` class
+            drawer = page.locator(".profileSummaryEdit")
+            drawer.wait_for(state="visible", timeout=20_000)
 
-def update_profile_summary(driver: webdriver.Chrome, wait: WebDriverWait) -> None:
-    from selenium.webdriver.common.keys import Keys
+            # No-op edit to mark the field dirty so Save becomes active
+            textarea = drawer.locator("textarea").first
+            textarea.click()
+            textarea.type(" ")
+            time.sleep(0.3)
+            textarea.press("Backspace")
+            time.sleep(0.3)
 
-    print("[*] Navigating to profile page …")
-    # Navigate to blank first to release login page resources
-    driver.get("about:blank")
-    time.sleep(2)
-    driver.get(PROFILE_URL)
-    time.sleep(4)
+            # Save
+            print("[*] Saving profile summary …")
+            save_btn = drawer.locator("button.btn-dark-ot, button[type='submit']").first
+            save_btn.click()
+            time.sleep(3)
+            print("[+] Profile summary saved successfully.")
 
-    # Click the Profile Summary nav link in the sidebar to scroll/load the section
-    wait.until(EC.element_to_be_clickable((
-        By.XPATH, "//li[normalize-space()='Profile summary']"
-    ))).click()
-    time.sleep(2)
+        except Exception as exc:
+            print(f"[!] Error: {exc}")
+            try:
+                page.screenshot(path="naukri_error.png")
+                print("[!] Screenshot saved to naukri_error.png for debugging.")
+            except Exception:
+                pass
+            browser.close()
+            sys.exit(1)
 
-    # Click the edit icon — inside .profileSummary > .card > div > .widgetHead > .edit
-    print("[*] Opening profile summary editor …")
-    summary_edit_btn = wait.until(EC.element_to_be_clickable((
-        By.CSS_SELECTOR, ".profileSummary .widgetHead .edit"
-    )))
-    driver.execute_script("arguments[0].click();", summary_edit_btn)
-    time.sleep(2)
-
-    # Wait for the drawer to open (it has class 'profileEditDrawer' without 'flipClose')
-    modal = wait.until(EC.presence_of_element_located((
-        By.CSS_SELECTOR, ".profileEditDrawer:not(.flipClose)"
-    )))
-
-    # Locate the textarea inside the open drawer
-    textarea = wait.until(EC.presence_of_element_located((
-        By.CSS_SELECTOR, ".profileEditDrawer:not(.flipClose) textarea"
-    )))
-
-    # Trigger a no-op edit so Naukri marks the field as dirty
-    textarea.click()
-    textarea.send_keys(" ")
-    time.sleep(0.3)
-    textarea.send_keys(Keys.BACK_SPACE)
-    time.sleep(0.3)
-
-    # Click Save
-    print("[*] Saving profile summary …")
-    save_btn = wait.until(EC.element_to_be_clickable((
-        By.CSS_SELECTOR, ".profileEditDrawer:not(.flipClose) button.btn-dark-ot, "
-                         ".profileEditDrawer:not(.flipClose) button[type='submit']"
-    )))
-    driver.execute_script("arguments[0].click();", save_btn)
-    time.sleep(3)
-    print("[+] Profile summary saved successfully.")
+        browser.close()
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Refresh Naukri profile summary.")
     parser.add_argument("--email",    required=True, help="Naukri account email")
     parser.add_argument("--password", required=True, help="Naukri account password")
-    parser.add_argument("--headless", action="store_true", help="Run Chrome in headless mode")
+    parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
     return parser.parse_args()
 
 
 def main() -> None:
-    args   = parse_args()
-    driver = get_driver(headless=args.headless)
-    wait   = WebDriverWait(driver, 20)
-
-    try:
-        login(driver, wait, args.email, args.password)
-        update_profile_summary(driver, wait)
-        print("[+] Done — profile has been refreshed.")
-    except Exception as exc:
-        print(f"[!] Error: {exc}")
-        try:
-            driver.save_screenshot("naukri_error.png")
-            print("[!] Screenshot saved to naukri_error.png for debugging.")
-        except Exception:
-            pass
-        sys.exit(1)
-    finally:
-        driver.quit()
+    args = parse_args()
+    run(args.email, args.password, headless=args.headless)
+    print("[+] Done — profile has been refreshed.")
 
 
 if __name__ == "__main__":
