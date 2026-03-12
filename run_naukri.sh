@@ -12,4 +12,4 @@ if [ -f .env ]; then
     set +a
 fi
 
-exec venv/bin/python naukri_update.py --headless
+exec venv/bin/python naukri_update.py
