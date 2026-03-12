@@ -17,17 +17,13 @@ PROFILE_URL        = "https://www.naukri.com/mnjuser/profile"
 def get_driver(headless: bool = False) -> webdriver.Chrome:
     options = Options()
     options.add_argument("--disable-notifications")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-extensions")
     options.add_argument("--disable-background-networking")
-    options.add_argument("--disable-client-side-phishing-detection")
-    options.add_argument("--disable-sync")
-    options.add_argument("--disable-default-apps")
     options.add_argument("--disable-webgl")
-    options.add_argument("--disable-features=VizDisplayCompositor")
-    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--memory-pressure-off")
     options.page_load_strategy = "eager"
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
@@ -36,16 +32,11 @@ def get_driver(headless: bool = False) -> webdriver.Chrome:
         options.add_argument("--window-size=1920,1080")
     else:
         options.add_argument("--start-maximized")
-
-    # Use explicit Chrome binary if provided (e.g. from browser-actions/setup-chrome on CI)
     chrome_bin = os.environ.get("CHROME_BIN")
     if chrome_bin:
         options.binary_location = chrome_bin
-
-    # Use explicit ChromeDriver if provided, otherwise let webdriver-manager find it
     chromedriver_bin = os.environ.get("CHROMEDRIVER_BIN")
     service = Service(chromedriver_bin) if chromedriver_bin else Service(ChromeDriverManager().install())
-
     return webdriver.Chrome(service=service, options=options)
 
 
@@ -67,6 +58,9 @@ def update_profile_summary(driver: webdriver.Chrome, wait: WebDriverWait) -> Non
     from selenium.webdriver.common.keys import Keys
 
     print("[*] Navigating to profile page …")
+    # Navigate to blank first to release login page resources
+    driver.get("about:blank")
+    time.sleep(2)
     driver.get(PROFILE_URL)
     time.sleep(4)
 
